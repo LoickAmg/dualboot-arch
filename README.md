@@ -23,6 +23,7 @@ cd dualboot-arch
 | [docs/DEPANNAGE.md](docs/DEPANNAGE.md) | environ 60 problèmes connus, classés par code (`[P3]`, `[S5]`…) |
 | [docs/COMPRENDRE-SNAPSHOTS.md](docs/COMPRENDRE-SNAPSHOTS.md) | les snapshots expliqués simplement |
 | [docs/RESEAU.md](docs/RESEAU.md) | se connecter sans câble ni VM (Wi-Fi, téléphone), pièges et volume de données |
+| [docs/GPARTED.md](docs/GPARTED.md) | réduire C: hors de Windows quand la `$Mft` bloque : fonctionnement, risques, pas à pas |
 | [docs/MANUEL.md](docs/MANUEL.md) | les étapes 3 à 5 commande par commande, si un script plante |
 | [docs/REPRISE.md](docs/REPRISE.md) | reprendre le projet avec un assistant sur l'Arch installée |
 | [docs/RECOVERY.md](docs/RECOVERY.md) | secours sans le dépôt (à garder sur le téléphone) |

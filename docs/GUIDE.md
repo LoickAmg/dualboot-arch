@@ -66,7 +66,7 @@ Tout se fait **dans Windows**, dans un terminal **administrateur** (PowerShell) 
    ```powershell
    reg add "HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" /v RealTimeIsUniversal /d 1 /t REG_DWORD /f
    ```
-5. **Réduire C:** : Gestion des disques (`diskmgmt.msc`) → clic droit sur C: → *Réduire le volume* → 256 000 Mo ou plus (1 GiB d'ESP + 250 GiB de racine). **Ne rien créer** dans l'espace libéré : il doit rester « Non alloué ». Si Windows refuse de réduire autant : [P2].
+5. **Réduire C:** : Gestion des disques (`diskmgmt.msc`) → clic droit sur C: → *Réduire le volume* → **257024** Mo (1 GiB d'ESP + 250 GiB de racine). **Ne rien créer** dans l'espace libéré : il doit rester « Non alloué ». Si Windows refuse de réduire autant : [P2] (identifier le fichier qui bloque). Sur ce PC, c'est la `$Mft` : réduction avec [GPARTED.md](GPARTED.md).
 6. Noter dans [HARDWARE.md](HARDWARE.md) : taille de l'ESP, espace non alloué, résultat de `reagentc /info`.
 7. **Ne pas mettre à jour Windows ni AtlasOS** pendant toute l'installation.
 

@@ -40,7 +40,7 @@ Index : [Windows et préparation (P)](#windows-préparation-et-disque-p) · [Cl�
   | `\System Volume Information\…` (points de restauration) | désactiver temporairement la protection du système pour C:, réduire, la réactiver. |
   | **`\$Mft`** (table principale NTFS) | **Windows ne sait pas la déplacer** : aucun réglage ne débloquera *Réduire le volume*. Passer à un outil hors Windows (ci-dessous). |
 
-- **`$Mft` : réduire avec GParted Live (recommandé)**. Outil libre, sur la clé Ventoy : ISO depuis gparted.org, somme SHA256 vérifiée. Avant : `chkdsk C:` (lecture seule) sans erreur, fichier d'échange désactivé, chargeur branché, fichiers importants copiés hors du PC.
+- **`$Mft` : réduire avec GParted Live (recommandé)**. Explication complète et pas à pas : [GPARTED.md](GPARTED.md). Outil libre, sur la clé Ventoy : ISO depuis gparted.org, somme SHA256 vérifiée. Avant : `chkdsk C:` (lecture seule) sans erreur, fichier d'échange désactivé, chargeur branché, fichiers importants copiés hors du PC.
   1. Démarrer GParted (F11 → Ventoy), puis repérer `/dev/nvme0n1p3`, **ntfs**, environ 930 Gio (ni la partition de 100 Mio ni celle de 730 Mio).
   2. Clic droit → *Redimensionner/Déplacer* → **Espace libre suivant (Mio) = 257024**, *Espace libre précédent* laissé à **0**.
   3. *Appliquer*, puis attendre sans interrompre (de 15 minutes à plus d'une heure).
