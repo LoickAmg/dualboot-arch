@@ -16,6 +16,11 @@ STATE_DIR="/tmp/dualboot-arch"
 PLAN="$STATE_DIR/plan.env"
 PRE_DUMP="$STATE_DIR/sfdisk-avant.txt"
 SUBVOLS="@ @home @snapshots @var_log @pkg"
+# copie du plan sur le support externe : survit à un redémarrage de la live (/tmp est en RAM)
+SAVE_DIR="${BACKUP_DIR%/}/plan-partition"
+
+# identité du disque (modèle + numéro de série) : refuse de travailler sur un autre disque
+disk_id() { lsblk -dno MODEL,SERIAL "$DISK" | tr -s ' ' | sed 's/ *$//'; }
 
 # lignes "partition" de sfdisk --dump (sans l'en-tête, qui contient last-lba etc.)
 part_lines() { sfdisk --dump "$DISK" | grep '^/dev/'; }
@@ -24,6 +29,8 @@ align_up() { local v="$1" a="$2"; echo $(( (v + a - 1) / a * a )); }
 
 do_plan() {
   require_root; require_uefi; require_cmd sgdisk sfdisk blockdev lsblk
+  require_set BACKUP_DIR
+  [ -d "$BACKUP_DIR" ] || die "BACKUP_DIR absent : $BACKUP_DIR (monter le support externe, voir GUIDE étape 2)."
   [ -b "$DISK" ] || die "Disque introuvable : $DISK"
   mkdir -p "$STATE_DIR"
   local ss align first last esp_sectors root_sectors esp_start esp_end root_start root_end free
@@ -54,6 +61,7 @@ do_plan() {
   part_lines >"$PRE_DUMP"
   cat >"$PLAN" <<EOF
 PLAN_DISK=$DISK
+PLAN_DISK_ID="$(disk_id)"
 PLAN_SS=$ss
 ESP_START=$esp_start
 ESP_END=$esp_end
@@ -61,6 +69,10 @@ ROOT_START=$root_start
 ROOT_END=$root_end
 PRE_SHA=$(sha256sum "$PRE_DUMP" | cut -d' ' -f1)
 EOF
+  mkdir -p "$SAVE_DIR"
+  cp "$PLAN" "$PRE_DUMP" "$SAVE_DIR/"
+  title "Disque"
+  echo "  $DISK : $(disk_id)"
   title "Partitions existantes (NE SERONT PAS TOUCHÉES)"
   cat "$PRE_DUMP"
   title "Plan"
@@ -69,7 +81,7 @@ EOF
     $(( (root_end - root_start + 1) * ss / 1073741824 )) "$ROOT_PARTLABEL"
   title "Commandes qui seront lancées par « create »"
   print_create_cmds
-  info "Plan enregistré dans $PLAN. Relire, puis : DRY_RUN=0 $0 create"
+  info "Plan enregistré dans $PLAN (copie : $SAVE_DIR). Relire, puis : DRY_RUN=0 $0 create"
 }
 
 print_create_cmds() {
@@ -78,10 +90,15 @@ print_create_cmds() {
 }
 
 load_plan() {
+  if [ ! -f "$PLAN" ] && [ -f "$SAVE_DIR/plan.env" ]; then
+    info "Plan repris depuis le support externe ($SAVE_DIR)."
+    mkdir -p "$STATE_DIR"; cp "$SAVE_DIR/plan.env" "$SAVE_DIR/sfdisk-avant.txt" "$STATE_DIR/"
+  fi
   [ -f "$PLAN" ] || die "Pas de plan : lancer d'abord « $0 plan »."
   # shellcheck disable=SC1090
   . "$PLAN"
   [ "$PLAN_DISK" = "$DISK" ] || die "Le plan concerne $PLAN_DISK, pas $DISK."
+  [ "$PLAN_DISK_ID" = "$(disk_id)" ] || die "Ce n'est plus le même disque (plan : « $PLAN_DISK_ID », actuel : « $(disk_id) »)."
 }
 
 do_create() {
@@ -113,17 +130,27 @@ verify_untouched() {
 }
 
 # new_part PARTLABEL : périphérique de la partition créée par ce script (jamais une préexistante)
+# Références : table d'avant le plan (/tmp ou support externe) et table de l'étape 2 (backup).
+# Sans aucune référence : refus. On ne formate jamais sans preuve que la partition est nouvelle.
 new_part() {
-  local label="$1" devs uuid
+  local label="$1" devs uuid refs=() r
   mapfile -t devs < <(lsblk -rno PATH,PARTLABEL "$DISK" | awk -v l="$label" '$2==l {print $1}')
   [ "${#devs[@]}" -eq 1 ] || die "Partition $label : ${#devs[@]} trouvée(s), 1 attendue."
   uuid="$(lsblk -rno PARTUUID "${devs[0]}")"
-  [ -f "$PRE_DUMP" ] && grep -qi "uuid=$uuid" "$PRE_DUMP" && die "${devs[0]} existait avant le plan : refus de formater."
+  [ -n "$uuid" ] || die "PARTUUID illisible pour ${devs[0]}."
+  for r in "$PRE_DUMP" "$SAVE_DIR/sfdisk-avant.txt" "${BACKUP_DIR%/}"/preflight-*/"$(basename "$DISK")"-sfdisk.txt; do
+    if [ -s "$r" ]; then refs+=("$r"); fi
+  done
+  [ "${#refs[@]}" -gt 0 ] || die "Aucune table de référence (ni plan, ni sauvegarde de l'étape 2 dans $BACKUP_DIR) : refus de formater."
+  for r in "${refs[@]}"; do
+    if grep -qi "uuid=$uuid" "$r"; then die "${devs[0]} figure dans $r : elle existait avant l'installation. Refus de formater."; fi
+  done
+  if findmnt -rno TARGET -S "${devs[0]}" >/dev/null; then die "${devs[0]} est monté : refus de formater."; fi
   printf '%s\n' "${devs[0]}"
 }
 
 do_format() {
-  require_root
+  require_root; require_set BACKUP_DIR; load_plan
   local esp root
   esp="$(new_part "$ESP_PARTLABEL")"; root="$(new_part "$ROOT_PARTLABEL")"
   banner_mode
@@ -140,11 +167,19 @@ do_format() {
 do_subvols() {
   require_root
   local root; root="$(unique_dev "$ROOT_DEV")"
+  [ "$(lsblk -no FSTYPE "$root")" = "btrfs" ] || die "$root n'est pas en Btrfs : lancer d'abord « format »."
+  mountpoint -q /mnt/top && die "/mnt/top est déjà monté : « umount /mnt/top » puis relancer."
   banner_mode
   confirm_oui "Créer les sous-volumes ($SUBVOLS) sur $root ?"
   run mkdir -p /mnt/top
   run mount -o subvolid=5 "$root" /mnt/top
-  local s; for s in $SUBVOLS; do run btrfs subvolume create "/mnt/top/$s"; done
+  # démontage garanti même si une commande échoue
+  if [ "$DRY_RUN" = "0" ]; then trap 'umount /mnt/top 2>/dev/null || true' EXIT; fi
+  local s
+  for s in $SUBVOLS; do
+    if [ "$DRY_RUN" = "0" ] && [ -e "/mnt/top/$s" ]; then info "$s existe déjà : conservé."; continue; fi
+    run btrfs subvolume create "/mnt/top/$s"
+  done
   [ "$DRY_RUN" = "0" ] && btrfs subvolume list /mnt/top
   run umount /mnt/top
   journal "sous-volumes $SUBVOLS" "OK"

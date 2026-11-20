@@ -88,7 +88,11 @@ Voir [L3].
 ### [P9] `partprobe` : le noyau n'a pas pris en compte la nouvelle table
 - Fréquent si une partition du disque est utilisée.
 - `partprobe /dev/nvme0n1` à nouveau, puis `lsblk` : si ARCH-ESP et ARCH-ROOT apparaissent, continuer.
-- Sinon : redémarrer la live (la table est déjà écrite sur le disque), puis reprendre à `format`.
+- Sinon : redémarrer la live (la table est déjà écrite sur le disque), puis :
+  1. `loadkeys fr-latin9`, réseau, `git clone` ou copie du dépôt (étape 1). Remettre `config.env` dans le même état, en particulier `BACKUP_DIR`.
+  2. Remonter le support de sauvegarde **au même endroit** (ex. `/mnt/usb`).
+  3. Reprendre à `DRY_RUN=0 ./install/10-partition.sh format`.
+- Le plan et la table « avant » sont aussi sur le support externe (`BACKUP_DIR/plan-partition/`). `format` les relit seul et refuse de formater s'il ne trouve aucune référence. Il refuse aussi si le disque n'est plus le même (modèle et numéro de série).
 
 ### [P10] mkfs : « appears to contain an existing filesystem »
 - La zone contenait des données (ancienne partition à cet endroit).
@@ -204,6 +208,15 @@ Voir [L3].
   ```
   Cette commande écrit sur l'ESP **Linux** seulement. Choisir ensuite la partition dans F11.
 - Les mises à jour de Windows peuvent remettre Windows en premier : même remède.
+- **Recréer seulement l'entrée UEFI** (GRUB est intact sur l'ESP Linux, mais l'entrée a disparu de la liste du firmware). Depuis Arch ou depuis la live :
+  ```
+  lsblk -o NAME,PARTLABEL,LABEL          # repérer la partition ARCH-ESP : ex. nvme0n1p5 → numéro 5
+  ls /efi/EFI/ARCH-GRUB/                 # (live : monter d'abord ARCHESP) doit contenir grubx64.efi
+  efibootmgr -c -d /dev/nvme0n1 -p 5 -L "ARCH-GRUB" -l '\EFI\ARCH-GRUB\grubx64.efi'
+  efibootmgr                             # l'entrée apparaît
+  ```
+  Remplacer `5` par le **vrai** numéro de la partition ARCH-ESP. Le chemin doit être celui de `--bootloader-id=ARCH-GRUB`. Ne pas copier une commande trouvée ailleurs avec `-p 1` : sur un PC livré avec Windows, la partition 1 est en général l'ESP **Windows**.
+  Plus simple et équivalent : `DRY_RUN=0 ./rescue/chroot-repair.sh grub`, qui recrée l'entrée.
 
 ### [B2] `grub rescue>` ou « error: no such device » / « unknown filesystem »
 - GRUB ne trouve plus `/@/boot/grub`, souvent après une manipulation de `@`.

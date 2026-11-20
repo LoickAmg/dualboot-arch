@@ -41,29 +41,51 @@ EOF
 }
 
 backup() {
+  # Contrairement au rapport, toute erreur de sauvegarde est BLOQUANTE :
+  # une sauvegarde incomplète ne doit jamais être annoncée comme réussie.
+  set -euo pipefail
   require_root; require_set BACKUP_DIR
   [ -d "$BACKUP_DIR" ] || die "BACKUP_DIR n'existe pas : $BACKUP_DIR (monter le support externe)"
-  local stamp out win_esp mnt n
+  case "$(findmnt -no SOURCE --target "$BACKUP_DIR")" in
+    "$DISK"*) die "BACKUP_DIR est sur $DISK : la sauvegarde doit aller sur un support EXTERNE." ;;
+  esac
+  local stamp out win_esp mnt n base
+  base="$(basename "$DISK")"
   stamp="$(date +%Y%m%d-%H%M%S)"; out="$BACKUP_DIR/preflight-$stamp"
   run mkdir -p "$out"
-  info "Rapport complet"
-  run_sh "bash '$0' > '$out/rapport.txt' 2>&1"
+  info "Rapport complet (diagnostic, erreurs non bloquantes)"
+  run_sh "bash '$0' > '$out/rapport.txt' 2>&1 || true"
   info "Table de partitions (binaire sgdisk + texte sfdisk)"
-  run sgdisk --backup="$out/$(basename "$DISK")-gpt.bak" "$DISK"
-  run_sh "sfdisk --dump '$DISK' > '$out/$(basename "$DISK")-sfdisk.txt'"
+  run sgdisk --backup="$out/$base-gpt.bak" "$DISK"
+  run_sh "sfdisk --dump '$DISK' > '$out/$base-sfdisk.txt'"
+  if [ "$DRY_RUN" = "0" ]; then
+    [ -s "$out/$base-gpt.bak" ] && [ -s "$out/$base-sfdisk.txt" ] || die "Sauvegarde de la table vide ou absente."
+  fi
+
   mapfile -t win_esp < <(lsblk -rno PATH,PARTTYPE "$DISK" | awk -v g="$ESP_GUID" 'tolower($2)==g {print $1}')
   n=${#win_esp[@]}
-  [ "$n" -eq 1 ] || { warn "$n ESP trouvées : copie de l'ESP Windows ignorée, à faire à la main."; return 0; }
+  [ "$n" -eq 1 ] || die "$n ESP trouvées sur $DISK (1 attendue). Table sauvegardée dans $out, ESP Windows NON copiée : voir DEPANNAGE [P5]."
   info "Copie de l'ESP Windows ${win_esp[0]} en LECTURE SEULE"
   mnt="/tmp/winesp-ro"
+  mountpoint -q "$mnt" && die "$mnt est déjà monté : « umount $mnt » puis relancer."
   run mkdir -p "$mnt"
   run mount -o ro "${win_esp[0]}" "$mnt"
-  if [ "$DRY_RUN" = "0" ] && [ ! -d "$mnt/EFI/Microsoft" ]; then warn "Pas de EFI/Microsoft sur ${win_esp[0]} : est-ce bien l'ESP Windows ?"; fi
+  if [ "$DRY_RUN" = "0" ]; then
+    trap 'umount /tmp/winesp-ro 2>/dev/null || true' EXIT
+    [ -f "$mnt/EFI/Microsoft/Boot/bootmgfw.efi" ] \
+      || die "Pas de EFI/Microsoft/Boot/bootmgfw.efi sur ${win_esp[0]} : ce n'est pas l'ESP Windows attendue. Voir DEPANNAGE [P5]."
+  fi
   run cp -r "$mnt/EFI" "$out/esp-windows-EFI"
+  if [ "$DRY_RUN" = "0" ]; then
+    diff -rq "$mnt/EFI" "$out/esp-windows-EFI" || die "La copie de l'ESP diffère de l'original."
+    info "Copie identique à l'original (diff -r)."
+  fi
   run umount "$mnt"
-  run_sh "cd '$out' && find . -type f -exec sha256sum {} + > SHA256SUMS"
-  journal "sauvegarde GPT + ESP Windows vers $out" "OK"
-  info "Terminé. Vérifier le contenu de $out avant de passer à la phase 2."
+  run_sh "cd '$out' && find . -type f ! -name SHA256SUMS -exec sha256sum {} + > SHA256SUMS"
+  run_sh "cd '$out' && sha256sum -c --quiet SHA256SUMS"
+  run sync
+  journal "sauvegarde GPT + ESP Windows vers $out" "OK, vérifiée (diff + sha256)"
+  info "Terminé et vérifié : $out"
 }
 
 case "${1:-report}" in

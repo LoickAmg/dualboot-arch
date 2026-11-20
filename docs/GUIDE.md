@@ -153,7 +153,11 @@ Si tu veux t'entraîner avant : [VM.md](VM.md) déroule tout ce guide dans une V
    # DRY_RUN=0 ./install/00-preflight-live.sh backup
    ```
 
-**Ce que tu dois voir** : un dossier `preflight-DATE/` qui contient `rapport.txt`, `nvme0n1-gpt.bak`, `nvme0n1-sfdisk.txt`, `esp-windows-EFI/Microsoft/...` et `SHA256SUMS`.
+**Ce que tu dois voir** :
+- `Copie identique à l'original (diff -r).` puis `Terminé et vérifié` ;
+- un dossier `preflight-DATE/` qui contient `rapport.txt`, `nvme0n1-gpt.bak`, `nvme0n1-sfdisk.txt`, `esp-windows-EFI/Microsoft/...` et `SHA256SUMS`.
+
+La moindre erreur (copie incomplète, ESP sans `bootmgfw.efi`, support de sauvegarde situé sur le NVMe) **arrête** le script : une sauvegarde n'est jamais annoncée réussie si elle ne l'est pas.
 ```
 # ls -R /mnt/usb/dualboot-backup | head -30
 ```
@@ -179,6 +183,7 @@ Tu dois voir :
 - deux commandes `sgdisk -n 0:DÉBUT:FIN ...`.
 
 Vérifier que les secteurs de début sont **après** la fin de la dernière partition Windows, ou dans le trou laissé par la réduction de C:.
+Le plan est aussi copié sur le support de sauvegarde (`plan-partition/`), avec le modèle et le numéro de série du disque. Les sous-étapes suivantes refusent de tourner sur un autre disque.
 Si « Pas assez de place » : [P2]. Si « Une partition porte déjà le nom » : [P7].
 
 **3.2 Création des partitions**

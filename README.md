@@ -65,18 +65,25 @@ dotfiles/                (prévu : dépôt séparé pour ~/.config)
 
 ## Déroulé
 
-| Phase | Où | Commandes | Contrôle avant de continuer |
+Même numérotation que `guide.sh` et [docs/GUIDE.md](docs/GUIDE.md) (étapes 0 à 12).
+
+| Étape | Où | Commandes | Contrôle avant de continuer |
 |---|---|---|---|
-| 0 | Windows + VM | Clonezilla, réduire C:, Ventoy ; puis [docs/VM.md](docs/VM.md) | les 10 tests de VM.md sont OK |
-| 1 | clé live | `install/00-preflight-live.sh` puis `… backup` | UEFI, une seule ESP Windows, ≥ 250 Go libres, pas de BitLocker, GPT sauvegardée |
-| 2 | clé live | `install/10-partition.sh plan`, puis `create`, `format`, `subvols`, `mount` | `lsblk -f` conforme, Windows inchangé |
-| 3 | clé live | `install/20-base-install.sh` ; `arch-chroot /mnt … 30-chroot-config.sh` | Arch démarre, Windows démarre (GRUB **et** F11) |
-| 4 | Arch | `post/40-snapper.sh`, tests, `post/jalon.sh 00 …` | snapshot bootable + restauration prouvée |
-| 5 | Arch | `post/50-hardware-laptop.sh install`, `udev`, `check` | `nvidia-smi`, `prime-run`, dGPU `suspended` au repos → jalon 01 |
-| 6 | Arch | jalon 02 ; `post/60-cachyos-repo.sh check / prepare / run / kernel` | 3 noyaux démarrent, `nvidia-smi` sur chacun → jalon 03 |
-| 7 | Arch | jalon 04 ; `post/70-hyprland.sh packages` puis `user-setup` | Hyprland sur tty1, secours sur tty2 → jalon 05 |
-| 8 | Arch | rice choisi (snapshot avant, script lu) | → jalon 06 |
-| 9 | Arch | `post/80-maintenance.sh` ; ensuite `sudo DRY_RUN=0 maj-systeme` | |
+| 0 | Windows | Clonezilla, BitLocker, `powercfg /h off`, UTC, réduire C: ; répétition conseillée : [docs/VM.md](docs/VM.md) | image vérifiée, ≥ 250 Go non alloués |
+| 1 | clé live | réseau, `git clone`, `config.env`, `install/00-preflight-live.sh` | UEFI, une seule ESP Windows, ≥ 250 Go libres, pas de BitLocker |
+| 2 | clé live | `install/00-preflight-live.sh backup` | GPT + ESP Windows copiées et vérifiées sur le support externe |
+| 3 | clé live | `install/10-partition.sh plan`, puis `create`, `format`, `subvols`, `mount` | `lsblk -f` conforme, Windows inchangé |
+| 4 | clé live | `install/20-base-install.sh` | fstab : 5 sous-volumes, aucun `subvolid=` |
+| 5 | clé live (chroot) | `arch-chroot /mnt … 30-chroot-config.sh` | GRUB installé sur l'ESP Linux |
+| 6 | Arch | premier démarrage, `grub-mkconfig` | Arch démarre, Windows démarre (GRUB **et** F11) |
+| 7 | Arch | `post/40-snapper.sh`, tests, `post/jalon.sh 00 …` | snapshot démarrable + restauration prouvée → jalon 00 |
+| 8 | Arch | `post/50-hardware-laptop.sh install`, `udev`, `check` | `nvidia-smi`, `prime-run`, dGPU `suspended` au repos → jalon 01 |
+| 9 | Arch | jalon 02 ; `post/60-cachyos-repo.sh check / prepare / run / kernel` | 3 noyaux démarrent, `nvidia-smi` sur chacun → jalon 03 |
+| 10 | Arch | jalon 04 ; `post/70-hyprland.sh packages` puis `user-setup` | Hyprland sur tty1, secours sur tty2 → jalon 05 |
+| 11 | Arch | rice choisi (snapshot avant, script lu) | → jalon 06 |
+| 12 | Arch | `post/80-maintenance.sh` ; ensuite `sudo DRY_RUN=0 maj-systeme` | |
+
+Les scripts gardent des noms de « phase » dans leurs commentaires (phase 1 à 9, ceux du brief) : seule la numérotation en étapes ci-dessus sert de référence.
 
 Un changement à la fois, puis un test, puis un snapshot de jalon.
 

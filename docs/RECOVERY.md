@@ -71,7 +71,27 @@ snapper -c root list
 findmnt /home /.snapshots /var/log
 ```
 
-`@home` n'est **pas** restauré (les données restent). Supprimer `@broken-…` seulement une fois le système validé, quelques jours plus tard.
+`@home` n'est **pas** restauré (les données restent).
+
+**Sécurités du script** :
+- Avant de toucher quoi que ce soit, il vérifie que le snapshot contient un système complet (fstab, noyau).
+- Si la copie du snapshot échoue, ou si le nouveau `@` est incomplet (fstab, noyau ou `grub.cfg` manquant), il **remet l'ancien `@` en place tout seul** et annule tout.
+- En simulation, il monte la partition en **lecture seule**, juste pour lister les snapshots : rien n'est écrit.
+
+### « @ a disparu » (restauration interrompue : coupure de courant, erreur)
+
+Le symptôme : GRUB affiche `grub rescue>`, ou `ls /mnt/top` ne montre plus `@` mais un `@broken-…`.
+
+```bash
+mkdir -p /mnt/top
+mount -o subvolid=5 /dev/disk/by-label/archroot /mnt/top
+ls /mnt/top                    # @broken-DATE présent, @ absent ?
+mv /mnt/top/@broken-DATE /mnt/top/@     # remettre l'ancien système (adapter DATE)
+umount /mnt/top
+reboot
+```
+
+S'il existe à la fois `@` et `@broken-…`, la restauration est allée au bout : ne rien renommer, redémarrer. Supprimer `@broken-…` seulement une fois le système validé, quelques jours plus tard.
 
 ## Niveau 3 — GRUB ne s'affiche plus
 
