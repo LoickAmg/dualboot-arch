@@ -91,9 +91,9 @@ Optionnel : [VM.md](VM.md) déroule tout ce guide dans une VM avec un faux Windo
    # loadkeys fr-latin9
    ```
 3. Vérifier le mode UEFI : `ls /sys/firmware/efi` doit lister des fichiers. Sinon : [L3].
-4. Réseau :
-   - Câble ou partage USB du téléphone : rien à faire.
-   - Wi-Fi :
+4. Réseau. La carte Wi-Fi de ce PC (Intel AX201) fonctionne directement dans la live : **ni câble ni VM nécessaires**. Détails, cas particuliers (Wi-Fi d'hôtel, eduroam, iPhone) et volume de données : [RESEAU.md](RESEAU.md).
+   - Câble Ethernet ou partage USB d'un téléphone Android : rien à faire.
+   - Wi-Fi (`loadkeys fr-latin9` **avant**, sinon le mot de passe est tapé en QWERTY) :
      ```
      # iwctl
      [iwd]# device list
@@ -295,7 +295,7 @@ Si le script plante : [MANUEL.md](MANUEL.md), section 5. On peut y reprendre blo
    $ nmcli device wifi connect "NomDuReseau" --ask
    $ ping -c3 archlinux.org
    ```
-   (`nmtui` propose la même chose en menus.) En cas de problème : [B5].
+   (`nmtui` propose la même chose en menus.) Sur le système installé, c'est NetworkManager qui gère le réseau, plus `iwctl`. La connexion est mémorisée pour les démarrages suivants. En cas de problème : [B5] et [RESEAU.md](RESEAU.md).
 4. Ajouter Windows au menu GRUB s'il n'y était pas :
    ```
    $ sudo grub-mkconfig -o /boot/grub/grub.cfg

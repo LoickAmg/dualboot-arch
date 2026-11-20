@@ -24,12 +24,31 @@ Index : [Windows et préparation (P)](#windows-préparation-et-disque-p) · [Cl�
 - **Faire** : dans Windows (admin), `manage-bde -off C:`, puis attendre que `manage-bde -status` affiche « Entièrement déchiffré ». Avant ça, noter la clé de récupération (compte Microsoft ou `manage-bde -protectors -get C:`).
 
 ### [P2] Windows refuse de réduire C: autant / « Pas assez de place »
-- **Cause** : des fichiers impossibles à déplacer (fichier d'échange, hibernation, points de restauration) sont placés en fin de volume.
-- **Faire** (dans Windows) :
-  1. `powercfg /h off` ;
-  2. désactiver temporairement le fichier d'échange (*Paramètres système avancés → Performances → Mémoire virtuelle → Aucun fichier*), puis redémarrer ;
-  3. désactiver la protection du système (points de restauration) pour C: ;
-  4. réduire à nouveau, puis **tout réactiver** sauf l'hibernation.
+- **Cause** : des fichiers impossibles à déplacer sont placés en fin de volume. Windows ne réduit pas au-delà.
+- **Identifier le fichier qui bloque** : après chaque tentative de réduction, Windows note son nom dans le journal Applications (source « defrag », événement **259**). Pour le lire (PowerShell, sans droits administrateur) :
+  ```powershell
+  Get-WinEvent -FilterHashtable @{LogName='Application'; Id=259} -MaxEvents 1 | Select-Object -ExpandProperty Message
+  ```
+  La ligne « The last unmovable file appears to be » donne le coupable. Le traiter, puis relancer *Réduire le volume*. Plusieurs fichiers peuvent bloquer **à la suite** : refaire le cycle jusqu'à ce que ça passe.
+- **Selon le fichier** (dans Windows, terminal administrateur) :
+
+  | Fichier cité | Solution |
+  |---|---|
+  | `\$Extend\$UsnJrnl` (journal des modifications NTFS) | `fsutil usn deletejournal /d C:`, puis réduire. N'efface aucun fichier : Windows recrée le journal, la recherche réindexe. |
+  | `\pagefile.sys` (fichier d'échange) | *SystemPropertiesPerformance → Advanced → Virtual memory → Change* → décocher « Automatically manage… » → C: → « No paging file » → Set → redémarrer → réduire → **tout recocher** et redémarrer. |
+  | `\hiberfil.sys` | `powercfg /h off` |
+  | `\System Volume Information\…` (points de restauration) | désactiver temporairement la protection du système pour C:, réduire, la réactiver. |
+  | **`\$Mft`** (table principale NTFS) | **Windows ne sait pas la déplacer** : aucun réglage ne débloquera *Réduire le volume*. Passer à un outil hors Windows (ci-dessous). |
+
+- **`$Mft` : réduire avec GParted Live (recommandé)**. Outil libre, sur la clé Ventoy : ISO depuis gparted.org, somme SHA256 vérifiée. Avant : `chkdsk C:` (lecture seule) sans erreur, fichier d'échange désactivé, chargeur branché, fichiers importants copiés hors du PC.
+  1. Démarrer GParted (F11 → Ventoy), puis repérer `/dev/nvme0n1p3`, **ntfs**, environ 930 Gio (ni la partition de 100 Mio ni celle de 730 Mio).
+  2. Clic droit → *Redimensionner/Déplacer* → **Espace libre suivant (Mio) = 257024**, *Espace libre précédent* laissé à **0**.
+  3. *Appliquer*, puis attendre sans interrompre (de 15 minutes à plus d'une heure).
+  4. De retour dans Windows : laisser finir une éventuelle vérification du disque, réactiver le fichier d'échange.
+  - En cas d'erreur : photographier le message, **ne pas insister**.
+- **AOMEI Partition Assistant Standard (gratuit, site officiel uniquement)** : alternative sous Windows. Constaté sur ce PC le 2026-11-21 : mode PreOS grisé, et le mode **Windows PE** plante au démarrage avec l'écran bleu **`DRIVER_VERIFIER_DMA_VIOLATION`**, deux fois. **Le disque n'a pas été modifié** (vérifié ensuite). C'est un conflit entre ce Windows PE et la protection DMA du PC (Intel VT-d). Contournement possible : désactiver **VT-d** dans le BIOS le temps de l'opération, puis le **réactiver**. Plus simple : GParted.
+  - **Jamais de version « Technician » ou crackée** d'un outil de partitionnement : il a tous les droits sur le disque.
+  - Après un échec : vérifier qu'aucune opération n'attend dans AOMEI, et qu'aucune entrée AOMEI / WinPE ne reste dans `msconfig` → Démarrage.
 - **Ou bien** : accepter une racine plus petite. Dans `config.env`, `ROOT_SIZE_GIB=200` (minimum conseillé), ou `MAX` pour prendre tout le bloc libre.
 - **Espace libre en deux morceaux** (le preflight montre plusieurs zones libres) : `plan` utilise uniquement le **plus grand bloc**. Si aucun bloc ne suffit, refaire la réduction.
 
@@ -127,6 +146,10 @@ Voir [L3].
 - Réseau caché : `station wlan0 connect-hidden "Nom"`.
 - **Plan B fiable** : téléphone Android branché en USB → *Partage de connexion USB*. L'interface `usb0` / `enp…u…` prend une adresse toute seule.
 - DNS : `ping 1.1.1.1` répond mais `ping archlinux.org` échoue → `echo "nameserver 1.1.1.1" > /etc/resolv.conf`.
+- Mot de passe Wi-Fi refusé alors qu'il est juste : le clavier est peut-être encore en QWERTY. Faire `loadkeys fr-latin9`, puis retaper le mot de passe.
+- Wi-Fi avec **page de connexion** (hôtel, école, Wi-Fi public) ou **WPA-Enterprise / eduroam** : inutilisable simplement dans la live. Passer par le téléphone (partage USB Android ou point d'accès Wi-Fi).
+- iPhone : préférer son **point d'accès Wi-Fi** au partage USB.
+- Tous les cas, avec les commandes de vérification : [RESEAU.md](RESEAU.md).
 
 ### [L5] Récupérer le dépôt sans Internet / git indisponible
 - Si `git` manque dans la live : `pacman -Sy git` (acceptable dans la live seulement).
