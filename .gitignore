@@ -1,0 +1,7 @@
+# progression locale de guide.sh
+.etat
+
+# sauvegardes et rapports générés (jamais dans le dépôt : contiennent des identifiants de partitions)
+preflight-*/
+*.bak
+*.bak-*
