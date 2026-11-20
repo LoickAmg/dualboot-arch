@@ -25,6 +25,14 @@ Ce guide se suffit à lui-même : tu peux le suivre seul, du début à la fin. S
 
 Pour comprendre les snapshots avant de commencer : [COMPRENDRE-SNAPSHOTS.md](COMPRENDRE-SNAPSHOTS.md).
 
+> **Installation directe sur la vraie machine (sans répétition en VM)**
+> Les scripts n'ont pas encore tourné sur ce PC. Pour compenser :
+> 1. **Image Clonezilla vérifiée obligatoire** avant l'étape 1. C'est le seul retour arrière possible si l'étape 3 tourne mal.
+> 2. **Chaque script d'abord en simulation** (sans `DRY_RUN=0`) : lire ce qu'il affiche. Cette simulation tient lieu de répétition.
+> 3. Si un script des étapes 3 à 5 plante : ne pas improviser. Suivre [MANUEL.md](MANUEL.md), qui donne les mêmes opérations commande par commande, avec un contrôle après chacune.
+> 4. Noter chaque erreur, même contournée, dans [JOURNAL.md](JOURNAL.md) : elle servira à corriger le script.
+> 5. Après l'étape 6, l'assistant peut être réinstallé sur l'Arch pour la suite : voir [REPRISE.md](REPRISE.md).
+
 ---
 
 ## Matériel nécessaire
@@ -69,7 +77,7 @@ Tout se fait **dans Windows**, dans un terminal **administrateur** (PowerShell) 
 
 **Point de contrôle** : image Clonezilla vérifiée, BitLocker désactivé, hibernation désactivée, ≥ 250 Go non alloués, Secure Boot désactivé.
 
-Si tu veux t'entraîner avant : [VM.md](VM.md) déroule tout ce guide dans une VM avec un faux Windows. C'est fortement conseillé pour l'étape 7 (snapshots), qui ne se rate pas sans conséquence sur la vraie machine.
+Optionnel : [VM.md](VM.md) déroule tout ce guide dans une VM avec un faux Windows, pour s'entraîner avant.
 
 ---
 
@@ -214,6 +222,8 @@ Tu dois voir la liste `@`, `@home`, `@snapshots`, `@var_log` et `@pkg`.
 
 **Point de contrôle** : `lsblk -f` montre la nouvelle racine montée sur `/mnt`, `/mnt/home`, `/mnt/.snapshots`, `/mnt/var/log` et `/mnt/var/cache/pacman/pkg`, et l'ESP Linux (ARCHESP) sur `/mnt/efi`. Les partitions Windows ont toujours leur taille d'origine. `./guide.sh valider 3`.
 
+Si un des scripts de cette étape plante : [MANUEL.md](MANUEL.md), section 3, reprise à la sous-étape où il s'est arrêté.
+
 ---
 
 ## Étape 4 — Installer la base Arch
@@ -233,6 +243,8 @@ Durée : 5 à 20 minutes selon la connexion.
 Erreurs de clés ou de paquets corrompus : [I1]. Téléchargement lent ou en échec : [I2]. « fstab contient déjà des entrées » : [I3].
 
 **Point de contrôle** : le message de contrôle fstab est OK. `./guide.sh valider 4`.
+
+Si le script plante : [MANUEL.md](MANUEL.md), section 4.
 
 ---
 
@@ -265,6 +277,8 @@ Puis :
 Retirer la clé au redémarrage.
 
 **Point de contrôle** : le script s'est terminé avec le texte « Point de contrôle phase 3 ». `./guide.sh valider 5`, **avant** `reboot` (la validation est reportée dans les copies posées sur /mnt).
+
+Si le script plante : [MANUEL.md](MANUEL.md), section 5. On peut y reprendre bloc par bloc : ce qui a déjà été fait ne gêne pas.
 
 ---
 
@@ -338,7 +352,7 @@ Deux nouvelles lignes doivent apparaître, de type `pre` et `post`, avec la desc
 
 **7.4 Test : restauration permanente (le vrai filet)**
 
-À faire **au moins une fois** pour savoir que ça marche. Idéalement en VM d'abord (voir VM.md).
+À faire **au moins une fois** pour savoir que ça marche. Sur la vraie machine, c'est sans risque pour tes données : l'ancien système est conservé (`@broken-…`), et il est remis en place automatiquement si la restauration échoue.
 1. Créer un snapshot de test, puis « casser » quelque chose sans danger :
    ```
    $ sudo snapper -c root create -d "test restauration"

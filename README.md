@@ -22,6 +22,8 @@ cd dualboot-arch
 | [docs/GUIDE.md](docs/GUIDE.md) | le pas à pas complet, étape 0 (Windows) à 12 (maintenance) : commandes, résultat attendu, point de contrôle |
 | [docs/DEPANNAGE.md](docs/DEPANNAGE.md) | environ 60 problèmes connus, classés par code (`[P3]`, `[S5]`…) |
 | [docs/COMPRENDRE-SNAPSHOTS.md](docs/COMPRENDRE-SNAPSHOTS.md) | les snapshots expliqués simplement |
+| [docs/MANUEL.md](docs/MANUEL.md) | les étapes 3 à 5 commande par commande, si un script plante |
+| [docs/REPRISE.md](docs/REPRISE.md) | reprendre le projet avec un assistant sur l'Arch installée |
 | [docs/RECOVERY.md](docs/RECOVERY.md) | secours sans le dépôt (à garder sur le téléphone) |
 | [docs/VM.md](docs/VM.md) | répétition complète en VM |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | choix techniques et écarts avec le brief |
