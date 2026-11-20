@@ -37,6 +37,25 @@ Au premier démarrage suivant, Windows peut lancer une **vérification du disque
 - **Une clé USB** : la clé Ventoy du projet, ou n'importe quelle clé d'au moins 1 Go.
 - L'ISO **GParted Live** pour **amd64**, téléchargée **uniquement** depuis le site officiel, gparted.org.
 - Le chargeur du portable.
+- Une souris : pratique, mais facultative (le pavé tactile fonctionne en général).
+- 1 à 2 heures sans avoir besoin du PC.
+
+## À faire / à ne pas faire
+
+| ✅ À faire | ❌ À ne pas faire |
+|---|---|
+| Copier hors du PC les fichiers importants **avant** | Lancer la réduction sans aucune copie de ce qui compte |
+| Brancher le chargeur pendant toute l'opération | Travailler sur batterie, fermer l'écran, laisser le PC se mettre en veille |
+| `chkdsk C:` sans erreur avant de commencer | Insister si GParted affiche un point d'exclamation sur C: |
+| Vérifier la somme SHA256 de l'ISO | Prendre GParted, ou un outil de partitionnement, sur un site tiers ou en version crackée |
+| Désactiver le fichier d'échange avant, le **réactiver** après | Oublier de le réactiver |
+| Toucher **uniquement** `/dev/nvme0n1p3` (ntfs, environ 930 Gio) | Toucher à l'ESP (100 Mio), au MSR (16 Mio) ou à la récupération (730 Mio) |
+| Laisser **Espace libre précédent = 0** | Déplacer le **début** de C: : c'est bien plus long, plus risqué, et inutile |
+| Avoir **une seule** opération en attente avant *Appliquer* | Empiler plusieurs opérations |
+| Attendre la fin, même si la barre semble figée | Éteindre, redémarrer ou forcer l'arrêt pendant *Appliquer* |
+| Laisser Windows finir sa vérification du disque au redémarrage | Interrompre cette vérification |
+| Laisser l'espace libéré **non alloué** | Y créer une partition depuis GParted ou Windows : c'est le script de l'étape 3 qui le fera |
+| En cas d'erreur : enregistrer les détails et photographier | Relancer l'opération à l'aveugle |
 
 ---
 
@@ -63,7 +82,18 @@ Au premier démarrage suivant, Windows peut lancer une **vérification du disque
 
 ### B. Démarrer GParted
 
-1. Clé branchée, chargeur branché. Allumer, puis appuyer sur **F11** au logo MSI et choisir la clé (entrée UEFI). Avec Ventoy, choisir ensuite l'ISO GParted.
+**On ne « lance » pas GParted depuis Windows : on démarre le PC sur la clé.** GParted remplace Windows le temps de l'opération ; Windows est éteint pendant ce temps, ce qui permet de tout déplacer.
+
+**Comment démarrer sur la clé** (au choix) :
+- **Touche F11** : PC éteint, clé branchée, allumer, puis appuyer **plusieurs fois** sur **F11** dès le logo MSI. Le menu de démarrage du firmware s'affiche : choisir la ligne de la clé USB, celle qui commence par **UEFI:** si elle existe. Pas besoin de changer l'ordre de démarrage dans le BIOS : ce choix ne vaut que pour cette fois.
+- **Depuis Windows**, si F11 ne réagit pas : *Paramètres → Système → Récupération → Démarrage avancé → Redémarrer maintenant*, puis *Utiliser un périphérique* → la clé USB.
+- Si la clé n'apparaît pas : autre port USB, *Fast Boot* désactivé dans le BIOS (touche **Suppr** au logo), voir DEPANNAGE [L1].
+
+**Secure Boot** : il est **déjà désactivé** sur ce PC (vérifié le 2026-11-21, `UEFISecureBootEnabled = 0`), donc il ne gênera pas. Secure Boot ne bloque jamais une modification de partition : il décide seulement quels programmes ont le droit de **démarrer**. S'il était activé, l'erreur apparaîtrait dès le démarrage de la clé (message Ventoy ou écran de violation de sécurité), jamais pendant la réduction. **Le laisser désactivé** : la clé Arch en aura besoin aussi.
+
+**Ensuite :**
+
+1. Clé branchée, chargeur branché, démarrer sur la clé (ci-dessus). Avec Ventoy, choisir ensuite l'ISO GParted dans la liste.
 2. Menu GParted Live : **GParted Live (Default settings)**.
 3. *Configuring console-data* (clavier) : **Don't touch keymap**. Le clavier ne sert presque pas, tout se fait à la souris.
 4. Langue : taper le numéro affiché en face de **French** dans la liste, ou Entrée pour garder l'anglais.
